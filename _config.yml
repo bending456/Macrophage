@@ -1,0 +1,8 @@
+remote_theme: pmarsceill/just-the-docs
+
+# Auxiliary links for the upper right hand corner
+aux_links:
+  "Sample Link":
+  - "http://google.com"
+
+title: "Macrophage"
