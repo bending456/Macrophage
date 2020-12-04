@@ -13,4 +13,5 @@ nav_order: 1
 ## This tutorial will cover ... 
 - Structure of Script 
 - Input files and their structure 
-- 
+- How to upload files
+- Calculation details
