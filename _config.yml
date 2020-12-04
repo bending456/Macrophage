@@ -2,7 +2,7 @@ remote_theme: pmarsceill/just-the-docs
 
 # Auxiliary links for the upper right hand corner
 aux_links:
-  "Sample Link":
-  - "http://google.com"
+  "Colaboratory Link":
+  - "https://colab.research.google.com/notebooks/intro.ipynb"
 
-title: "Macrophage"
+title: "Macrophage - Pathway Analysis in Python"
