@@ -1,7 +1,8 @@
 ---
 title: How to upload new Data?
-nav_order: 3
-parent: User Guides
+nav_order: 2
+parent: Etc.
+grand_parent: User Guides
 ---
 
 # What are the given data?

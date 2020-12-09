@@ -1,7 +1,8 @@
 ---
 title: Calculation in Detail
-nav_order: 4
-parent: User Guides
+nav_order: 2
+parent: Colaboratory
+grand_parent: User Guides
 ---
 
 # What is in **utilities.py**?

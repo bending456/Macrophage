@@ -1,7 +1,8 @@
 ---
 title: Data Files
-nav_order: 2
-parent: User Guides
+nav_order: 1
+parent: Etc.
+grand_parent: User Guides
 ---
 
 # What are the data files required for the analysis?

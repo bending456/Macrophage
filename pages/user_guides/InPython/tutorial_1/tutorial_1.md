@@ -1,7 +1,8 @@
 ---
 title: Colab Version Script
 nav_order: 1
-parent: User Guides
+parent: Colaboratory
+grand_parent: User Guides
 ---
 
 # What's in this script?
