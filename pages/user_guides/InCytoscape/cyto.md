@@ -33,7 +33,7 @@ parent: User Guides
 ![This is zoomed outcome](cyto6.png)
 
 ### Customizing Visualization 
-- **[Side Tab]** Style -> Edge -> Middel block of [*Target Arrow Shape*] -> Discrete Mapping in [*Mapping Type*]
+- **[Side Tab]** Style -> Edge -> Middle block of [*Target Arrow Shape*] -> Discrete Mapping in [*Mapping Type*]
 
 ![This is side tab](cyto7.png)
 
