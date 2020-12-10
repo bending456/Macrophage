@@ -23,7 +23,7 @@ Therefore, we recommend visiting [PDB website](https://www.rcsb.org/) to make su
 
 ### 1. mRNA Sequence Data 
 
-![This is mRNAdata.csv located in /content/pathwayanalysis](mrnafilestructure.png)
+![This is mRNAdata.csv located in /content/pathwayanalysis](mrna.png)
 - Input file name: mRNAdata.csv 
 
 How this data set was collected:
@@ -35,9 +35,6 @@ Description per Column:
 2. mRNA seq Expression Level (rawdata) in M1 macrophage (the unit of RPM)
 3. mRNA seq Expression Level (rawdata) in M2 macrophage (the unit of RPM)
 4. mRNA seq Expression Level (rawdata) in M2 macrophage treated with M1 MEV (denoted as M1M2) (the unit of RPM)
-5. P-value 
-6. Log of Fold Change (base 2) between M1M2 and M1: positive means the up-regulated expression of target gene in M1M2
-7. Log of Fold Change (base 2) between M1M2 and M2: positive means the up-regulated expression of target gene in M1M2
 
 
 ### 2. Network (Pathway) Exported from Cytoscape 
@@ -48,7 +45,7 @@ How this data set was collected:
 
 The demonstrated figure of the network, which is the outcome of merging multiple pathways for M1 and M2 polarization, can be exported as a sif file containing the information of protein-protein molecule-molecule interaction/signaling cascades in the text as shown in the below figure.  
 
-![This is in .sif file located in /content/pathwayanalysis](networkfilestructure.png)
+![This is in .sif file located in /content/pathwayanalysis](network.png)
 - Input file name: expanded_IL6_modified_receptor.sif
 
 How to interpret this text file:
@@ -59,9 +56,13 @@ Description per Column:
 1. Node names for the starting of the interaction between two proteins or molecules or complexes 
 2. Edge characteristics 
 3. Node names that is linked to the starting node
-4. Boolean (true or false) to indicate whether the starting node is receptor or not. 
 
-### 3. Protein Expression Data 
+### 3. List of Receptors 
+![This is .txt file](receptorlist.png)
+- Input file name: receptorlist.txt
+- If one of nodes added as a new network to the library is receptor, please list the receptor name in Network (sif file) to here. 
+
+### 4. Protein Expression Data 
 
 How this data set was collected:
 ![This is in Ab_Chris.csv located in /content/pathwayanalysis](protfilestructure.png)

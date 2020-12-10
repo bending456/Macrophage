@@ -9,7 +9,7 @@ parent: User Guides
 ## How to Start
 1. Download SIF file from the repository: [Click to Download](https://bitbucket.org/pkhlab/pathwayanalysis/get/e2b9464490d5.zip) 
 2. Unzip the download file 
-3. Locate .sif file (*expanded_IL6_modified_receptor.sif* for this tutorial)
+3. Locate .sif file (*network.sif* for this tutorial)
 
 ### In Cytoscape 
 - **[Main Tab]** File -> Import -> Network from File or [Ctrl + L]

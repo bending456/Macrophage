@@ -23,6 +23,7 @@ from IPython.display import Image
 ```python
 def reader(filename,
            sif=False):
+
     if sif == True:
       rawdata = open(filename+'.sif','r')
     else:
@@ -38,11 +39,13 @@ def reader(filename,
                 column_names = line.strip("\n' ''")
 
                 if sif == True:
-                  data_name = ['start_nodes','edge_features','end_nodes','receptor_switch']
+                  data_name = ['start_nodes','edge_features','end_nodes']
                 else:
+                  line = line.strip("\n' ''")
                   data_name = line.split(",")
 
                 for name in data_name:
+                    name = name.strip('\n')
                     data[name] = []
 
             else:
@@ -54,11 +57,27 @@ def reader(filename,
                   line = line.split(",")
                 
                 c = 0
-
                 for name in data_name:
                     element = line[c]
                     c += 1 
                     data[name].append(element)
+
+    rawdata.close()
+    return data
+```
+
+## File reader for List of Receptors
+``` python
+def textreader(filename):
+    rawdata = open(filename+'.txt','r')
+
+    data = []
+    counter = 0
+
+    for line in rawdata:
+        if line.strip():
+          line = line.strip("\n' '")
+          data.append(str(line))
     
     rawdata.close()
     return data
@@ -141,14 +160,14 @@ def NetworkFigure(node_names,data_network,edge_weight_dict):
     3. List of score calculated from path length based on edge weight
 
 ```python
-def analysis_prep(data_network,node_names,edge_weight_dict,destination):
+def analysis_prep(data_network,
+                  receptorlist,
+                  node_names,
+                  edge_weight_dict,
+                  destination):
+
   counter = 0
-  Receptors = []
-  for switch in data_network['receptor_switch']:
-    if switch == 'true':
-      Receptors.append(data_network['start_nodes'][counter])
-    counter += 1 
-  Receptors = np.unique(Receptors)
+  Receptors = receptorlist
 
   G = nx.DiGraph()
   for node in node_names:
@@ -172,7 +191,7 @@ def analysis_prep(data_network,node_names,edge_weight_dict,destination):
       pathDict[R] = Path
       Score = nx.dijkstra_path_length(G,R,Outcome)
       pathScore[R] = Score
-      print('The shortest path from ',R,' (Upstream Receptor) to ',destination,' in a weighted Pathway Network: \n', Path,'\n with score of ',Score,'\n')
+      #print('The shortest path from ',R,' (Upstream Receptor) to ',destination,' in a weighted Pathway Network: \n', Path,'\n with score of ',Score,'\n')
     except:
       pass
 
@@ -183,9 +202,16 @@ def analysis_prep(data_network,node_names,edge_weight_dict,destination):
 - This will take expression from mRNA and protein expression and converts into overall score along with pathway length based score (addition)
 
 ```python
-def exp_checker(Receptor_name,data_mrna,name_from_prot,prot_data,pathScore,pathDict):
+def exp_checker(Receptor_name,
+                data_mrna,
+                name_from_prot,
+                prot_data,
+                pathScore,
+                pathDict):
+
   List_path_nodes = pathDict[Receptor_name]
-  print('Checking the expression of each node from mRNA seq data for ', Receptor_name,'-mediated pathway')
+  #print('Checking the expression of each node from mRNA seq data for ', Receptor_name,'-mediated pathway')
+  #print(pathDict[Receptor_name])
   M2Score = 0
   PolarizeScore = 0
   prot_exp_score = 0
@@ -195,16 +221,18 @@ def exp_checker(Receptor_name,data_mrna,name_from_prot,prot_data,pathScore,pathD
       if node.lower() == g_name.lower():
         n = data_mrna['mgi_symbol'].index(g_name)
         expM2 = float(data_mrna['M2'][n])
-        compFC = float(data_mrna['logFC(M1M2/M2)\n'][n])
-        print('- Name of Node: ', node)
+        expM1 = float(data_mrna['M1'][n])
+        expM1M2 = float(data_mrna['M1M2'][n])
+        compFC = math.log2(expM1M2/expM2)
+        #print('- Name of Node: ', node)
 
         if float(expM2) < 0.001:
           continue
         else:
           M2Score = M2Score + expM2
           PolarizeScore = PolarizeScore + compFC
-          print('-- Expression in M2: ', expM2)
-          print('-- Fold Change from M2 to M1M2: ', compFC)
+          #print('-- Expression in M2: ', expM2)
+          #print('-- Fold Change from M2 to M1M2: ', compFC)
 
     for p_name in name_from_prot:
       if node.lower() == p_name.lower():
@@ -213,8 +241,8 @@ def exp_checker(Receptor_name,data_mrna,name_from_prot,prot_data,pathScore,pathD
           prot_exp_val = prot_exp*-1
     
         prot_exp_score += prot_exp_val
-        print(p_name)
-        print('-- Fold Change from Protein Expression: ',prot_exp_val)
+        #print(p_name)
+        #print('-- Fold Change from Protein Expression: ',prot_exp_val)
       else:
         prot_exp_val = 0
       
@@ -226,8 +254,8 @@ def exp_checker(Receptor_name,data_mrna,name_from_prot,prot_data,pathScore,pathD
     pathscore = np.log10(1/pathscore)
 
   total = 0.1*M2Score + 10*PolarizeScore + pathscore + prot_exp_score*10
-  print('- Pathway Score: ',total, 'pathway length: ',pathScore[Receptor_name])
-  print('----END----')
+  #print('- Pathway Score: ',total, 'pathway length: ',pathScore[Receptor_name])
+  #print('----END----')
 
   return total
 ```
@@ -243,20 +271,233 @@ total = 0.1*M2Score + 10*PolarizeScore + pathscore + prot_exp_score*10
 
 ## Generating the final outcome. 
 ```python
-def score_per_receptor(destination,data_mrna,name_from_prot,prot_data,data_network,node_names,edge_weight_dict):
-  Receptors, pathDict, pathScore = analysis_prep(data_network,node_names,edge_weight_dict,destination)
+def score_per_receptor(destination,
+                       data_mrna,
+                       receptor_list,
+                       name_from_prot,
+                       prot_data,
+                       data_network,
+                       node_names,
+                       edge_weight_dict):
+
+  Receptors, pathDict, pathScore = analysis_prep(data_network,
+                                                 receptor_list,
+                                                 node_names,
+                                                 edge_weight_dict,
+                                                 destination)
   collected_score = []
   tested_receptors = []
-  print(Receptors)
+
+  #print(Receptors)
   for receptor_name in Receptors:
     try:
-      score = exp_checker(receptor_name,data_mrna,name_from_prot,prot_data,pathScore,pathDict)
+      score = exp_checker(receptor_name,
+                          data_mrna,
+                          name_from_prot,
+                          prot_data,
+                          pathScore,
+                          pathDict)
+
       collected_score.append(score)
       tested_receptors.append(receptor_name)
     except:
       pass
 
   receptor_and_score = {'Receptors': tested_receptors, 'Score': collected_score}
-  print(receptor_and_score)
-  return receptor_and_score
+  #print(receptor_and_score)
+  return receptor_and_score, pathDict
 ```
+
+## Checking mRNA sequence and protein expression data against specific node
+```python
+def expression_search(name_node,
+                      data_mrna,
+                      prot_data,
+                      name_from_prot):
+  
+  for name_prot in name_from_prot:
+    if name_node.lower() == name_prot.lower():
+      element_prot = prot_data[name_prot]
+  
+  try:
+    if element_prot:
+      prot_exp = element_prot
+  except:
+    prot_exp = 'N/A'
+  
+  for name_mrna in data_mrna['mgi_symbol']:
+    if name_node.lower() == name_mrna.lower():
+      n = data_mrna['mgi_symbol'].index(name_mrna)
+      expM2 = float(data_mrna['M2'][n])
+      expM1 = float(data_mrna['M1'][n])
+      expM1M2 = float(data_mrna['M1M2'][n])
+      compFC = math.log2(expM1M2/expM2)
+  
+  try:
+    if n:
+      M1 = expM1
+      M2 = expM2 
+      M1M2 = expM1M2 
+      logFCofM1M2overM2 = compFC 
+  except:
+    M1 = 'N/A'
+    M2 = 'N/A'
+    M1M2 = 'N/A'
+    logFCofM1M2overM2 = 'N/A'
+
+  return prot_exp, M1, M2, M1M2, logFCofM1M2overM2
+  ```
+
+
+# What's in ***pathwaySearch.py***?
+```python
+import networkx as nx
+import numpy as np
+import matplotlib.pyplot as plt
+from networkx.drawing.nx_agraph import graphviz_layout
+from graphviz import Digraph
+import utilities as util
+
+
+def runItAll(
+              mRNA_inputfilename = 'mRNAdata', 
+              Prot_inputfilename = 'Ab_Chris',
+              network_inputfilename = 'network',
+              receptor_list = 'receptorlist',
+              destination = 'M1_polarization'
+              ): 
+  #####################################################
+  ### Extracting Gene names from mRNA sequence data ###
+  #####################################################
+  data_mrna = util.reader(mRNA_inputfilename)
+
+  #########################################
+  ### Extracting protein names and data ###
+  #########################################
+  data_prot, prot_name = util.protReader(Prot_inputfilename)
+
+  ########################################################################
+  ### Extracting Node names from pathway file generated from Cytoscape ###
+  ########################################################################
+  data_network = util.reader(network_inputfilename,sif=True) 
+
+  #########################################################
+  ### Extracting Receptor node names from Receptor List ###
+  #########################################################
+  receptor_list = util.textreader(receptor_list) 
+
+  ##############################################################################
+  ### Sorting nodes and edges                                                ###
+  ###           and add the weight to each edge based on its unique feature  ###
+  ##############################################################################
+  node_names = np.unique(data_network['start_nodes']+data_network['end_nodes']) ## get unique node name
+  edge_unique_feature = np.unique(data_network['edge_features']) ## get unique edge feature
+
+  edge_weight_dict = util.weighingEdges(edge_unique_feature,1000,1)
+
+  ######################################################################
+  ###       Generating Network Image based on pathway file           ###
+  ###  This step is simply for the better visualization than default ###
+  ######################################################################
+  '''
+  File will be generated in /home/pathwayanalysis directory
+  under the name "network_figure.png"
+  '''
+  util.NetworkFigure(node_names,data_network,edge_weight_dict)
+
+  ###########################################
+  ###       Performing the analysis       ###
+  ###########################################
+  receptor_and_score, pathDict = util.score_per_receptor(destination,
+                                                         data_mrna,
+                                                         receptor_list,
+                                                         prot_name,
+                                                         data_prot,
+                                                         data_network,
+                                                         node_names,
+                                                         edge_weight_dict)
+
+  receptor_specifics = {}
+  for R in receptor_list:
+    receptor_specifics[R] = {}
+    
+    try:
+      list_node = pathDict[R]
+      for node in list_node:
+        receptor_specifics[R][node] = {}
+        prot_exp, M1, M2, M1M2, logFCofM1M2overM2 = util.expression_search(node,
+                                                                           data_mrna,
+                                                                           data_prot,
+                                                                           prot_name)
+
+        receptor_specifics[R][node]['mAb'] = prot_exp
+        receptor_specifics[R][node]['M1_mRNA'] = M1
+        receptor_specifics[R][node]['M2_mRNA'] = M2
+        receptor_specifics[R][node]['M1M2_mRNA'] = M1M2
+        receptor_specifics[R][node]['logFC(M1M2/M2)'] = logFCofM1M2overM2
+    
+    except:
+      pass 
+
+    
+
+  import pandas as pd 
+  df = pd.DataFrame(receptor_and_score)
+
+
+  return df, receptor_specifics, receptor_list
+
+#!/usr/bin/env python
+import sys
+##################################
+#
+# Revisions
+#       10.08.10 inception
+#
+##################################
+
+
+#
+# Message printed when program run without arguments 
+#
+def helpmsg():
+  scriptName= sys.argv[0]
+  msg="""
+Purpose: 
+ 
+Usage:
+"""
+  msg+="  %s -run" % (scriptName)
+  msg+="""
+  
+ 
+Notes:
+
+"""
+  return msg
+
+#
+# MAIN routine executed when launching this script from command line 
+#
+if __name__ == "__main__":
+  import sys
+  msg = helpmsg()
+  remap = "none"
+
+  if len(sys.argv) < 2:
+      raise RuntimeError(msg)
+
+  #fileIn= sys.argv[1]
+  #if(len(sys.argv)==3):
+  #  1
+  #  #print "arg"
+
+  # Loops over each argument in the command line 
+  for i,arg in enumerate(sys.argv):
+    # calls 'doit' with the next argument following the argument '-validation'
+    if(arg=="-run"):
+         runItAll()
+         quit()
+
+  raise RuntimeError("Arguments not understood")
+  ```
