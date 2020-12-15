@@ -75,3 +75,7 @@ Description per Column:
 1. Protein names reported via experiment 
 2. Equivalent node names in Cytoscape-generated pathway
 3. Ratiomatric value from M1 to M2 
+
+### 5. List of Ligands
+![This is .yaml file](ligandlist.png)
+- Input file name: ligandlist.yaml

@@ -25,44 +25,52 @@ def reader(filename,
            sif=False):
 
     if sif == True:
+
       rawdata = open(filename+'.sif','r')
-    else:
-      rawdata = open(filename+'.csv','r')
+      data = {}
+      network_info = ['start_nodes','edge_features','end_nodes']
+      counter = 0
 
-    data = {}
-    counter = 0
-
-    for line in rawdata:
+      for line in rawdata:
         if line.strip():
-            if counter == 0:
-                counter += 1
-                column_names = line.strip("\n' ''")
+          line = line.strip("\n' '")
+          line = line.split("	")
 
-                if sif == True:
-                  data_name = ['start_nodes','edge_features','end_nodes']
-                else:
-                  line = line.strip("\n' ''")
-                  data_name = line.split(",")
+          if counter == 0:
+            counter = counter + 1 
+            for name in network_info:
+              data[name]=[]
 
-                for name in data_name:
-                    name = name.strip('\n')
-                    data[name] = []
+          for i in np.arange(len(network_info)):
+            data[network_info[i]].append(line[i])
 
-            else:
-                line = line.strip("\n' '")
+      rawdata.close()
+
+    else:
+
+      rawdata = open(filename+'.csv','r')
+      data = {}
+      counter = 0
+
+      for line in rawdata:
+        if line.strip():
+          if counter == 0:
+            counter = counter + 1 
+            column_names = line.strip("\n' '")
+            data_name = line.split(",")
+            # Creating the dictionary data structure
+            for name in data_name:
+              data[name]=[]
+          else:
+            line = line.strip("\n' '")
+            line = line.split(",")
+            # Storing the data in the dictionary 
+            for i in np.arange(4):
+              element = line[i]
+              data[data_name[i]].append(element)
+
     
-                if sif == True:
-                  line = line.split("	")
-                else:
-                  line = line.split(",")
-                
-                c = 0
-                for name in data_name:
-                    element = line[c]
-                    c += 1 
-                    data[name].append(element)
-
-    rawdata.close()
+      rawdata.close()
     return data
 ```
 
@@ -357,14 +365,16 @@ import matplotlib.pyplot as plt
 from networkx.drawing.nx_agraph import graphviz_layout
 from graphviz import Digraph
 import utilities as util
-
+import yaml 
 
 def runItAll(
               mRNA_inputfilename = 'mRNAdata', 
               Prot_inputfilename = 'Ab_Chris',
               network_inputfilename = 'network',
               receptor_list = 'receptorlist',
-              destination = 'M1_polarization'
+              List_file_name = 'test2',
+              destination = 'M1_polarization',
+              unit_test_receptor = None
               ): 
   #####################################################
   ### Extracting Gene names from mRNA sequence data ###
@@ -417,10 +427,16 @@ def runItAll(
                                                          node_names,
                                                          edge_weight_dict)
 
+  with open(List_file_name+'.yaml') as file:
+    ligand_list = yaml.load(file)
+
   receptor_specifics = {}
+  ligand_specifics = {}
+
   for R in receptor_list:
     receptor_specifics[R] = {}
-    
+    ligand_specifics[R] = {}
+
     try:
       list_node = pathDict[R]
       for node in list_node:
@@ -435,17 +451,48 @@ def runItAll(
         receptor_specifics[R][node]['M2_mRNA'] = M2
         receptor_specifics[R][node]['M1M2_mRNA'] = M1M2
         receptor_specifics[R][node]['logFC(M1M2/M2)'] = logFCofM1M2overM2
-    
+       
     except:
-      pass 
+      pass
 
-    
+    try: 
+      list_ligand = ligand_list[R]    
+      for ligand in list_ligand:
+        ligand_specifics[R][ligand] = {}
+        prot_exp, M1, M2, M1M2, logFCofM1M2overM2 = util.expression_search(ligand,
+                                                                           data_mrna,
+                                                                           data_prot,
+                                                                           prot_name)
+
+        ligand_specifics[R][ligand]['mAb'] = prot_exp
+        ligand_specifics[R][ligand]['M1_mRNA'] = M1
+        ligand_specifics[R][ligand]['M2_mRNA'] = M2
+        ligand_specifics[R][ligand]['M1M2_mRNA'] = M1M2
+        ligand_specifics[R][ligand]['logFC(M1M2/M2)'] = logFCofM1M2overM2
+
+    except:
+      pass
+
+  if unit_test_receptor:
+    Receptors, pathDict, pathScore = util.analysis_prep(data_network,
+                                                        receptor_list,
+                                                        node_names,
+                                                        edge_weight_dict,
+                                                        destination)
+
+    score = util.exp_checker(unit_test_receptor,
+                             data_mrna,
+                             prot_name,
+                             data_prot,
+                             pathScore,
+                             pathDict)
+  else:
+    score = 'This is not unit test'
 
   import pandas as pd 
   df = pd.DataFrame(receptor_and_score)
 
-
-  return df, receptor_specifics, receptor_list
+  return df, receptor_specifics, ligand_specifics, receptor_list, score
 
 #!/usr/bin/env python
 import sys

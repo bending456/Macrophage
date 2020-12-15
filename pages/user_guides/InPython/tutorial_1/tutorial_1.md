@@ -44,20 +44,24 @@ import pandas as pd
 - The first outcome as you execute the following cell is the list of receptor names in the network library and corresponding score that the script processed  
 
 ```python
-dataSets, receptor_specifics, receptors  = ps.runItAll(
+dataSets, receptor_specifics, ligand_specifics, receptors, score  = ps.runItAll(
                                                 mRNA_inputfilename = 'mRNAdata', 
                                                 Prot_inputfilename = 'Ab_Chris',
                                                 network_inputfilename = 'network',
                                                 receptor_list = 'receptorlist',
-                                                destination = 'M1_polarization')
+                                                List_file_name = 'ligandlist',
+                                                destination = 'M1_polarization',
+                                                unit_test_receptor = 'IL1R1')
 dataSets.sort_values('Score',ascending=False)
 ```
 - ***[Note]*** Check out the data structure at [Here](/pages/user_guides/etc/data_structure/data_structure.html)
 - mRNA_inputfilename: the name of file containing mRNA sequence data
 - Prot_inputfilename: the name of file containing Protein Expression data  
 - network_inputfilename: the name of network file (sif)
-- receptor_list: the name of file containing the list of receptors in network 
+- receptor_list: the name of file containing the list of receptors in network
+- List_file_name: the name of file containing the list of ligands associated with a given list of receptors 
 - destination: the target node from the receptor 
+- unit_test_receptor: the name of a single receptor to print out a single score to test the code
 
 ### Outcome 1 
 ![This is the first outcome](py1.png)
@@ -97,3 +101,12 @@ sorted
 - In the directory of ***/content/pathwayanalysis*** (check out the first image posted at top), you should be able to locate ***network_figure.png***
 
 ![This is network](network_figure.png)
+
+### Outcome 3 
+```python
+newsorted = pd.DataFrame(ligand_specifics[Receptor_Name])
+newsorted
+```
+
+![This is the third outcome](py3.png)
+- This outcome provides a list of ligands associated with a selected receptor (*Receptor_Name*) along with their expression in mRNA and mAbs data. 
