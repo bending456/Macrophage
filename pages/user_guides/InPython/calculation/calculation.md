@@ -275,7 +275,7 @@ total = 0.1*M2Score + 10*PolarizeScore + pathscore + prot_exp_score*10
 - *pathscore* is either quite small (< 100) or big (> 1000) number. Small number indicates more favorable path than big score pathway because 1000 score is added to the pathway score if path is inhibitory. Therefore, we convert the score to -1000 if the original score is bigger than 1000. 
 - *M2Score* indicates the expression of M1 specific gene in M2 under the assumption that its abundance will be addition for M1 polarization. 
 - *PolarizeScore* indicates the expression change of M1 specific gene due to M1 MEV treatment (M1M2). 
-- *prot_exp_score* indicates the expression upregulated from M2 to M1. Only selective proteins listed as nodes in selected-receptor mediated pathway. 
+- *prot_exp_score* indicates the expression of gene in M2 over M1-derived vesicles (e.g. values >1 indicate expression is higher in M2s) nly selective proteins listed as nodes in selected-receptor mediated pathway. 
 
 ## Generating the final outcome. 
 ```python
