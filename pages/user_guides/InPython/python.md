@@ -72,6 +72,8 @@ This is a critical part of analysis.
 
 ![This is calculation example](Figure1.png)
 
+In our scoring scheme, ***spontaneous path is expressed with low edge weight***
+
 ### Step 6: calculating the total cost of pathway mediated by a given receptor
 There are four scores the script generate 
 1. `M1_target`
