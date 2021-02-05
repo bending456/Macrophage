@@ -9,7 +9,9 @@ The 'macrophage pathway analysis' suite provides a workflow for
 - curating a signal transduction pathway network describing transmember receptor (TM)-dependent activation of gene regulation
 - performing 'shortest path' analyses that link transmembrane receptors to gene up/down regulation
 
-
+> Click [**Here**](https://colab.research.google.com/drive/15MN-TPf8YxHK6o4suh9fW5QAwyQ7_JNq?usp=sharing) to access our Colab-based NetworkX Script
+>
+> [***NOTE***] To fully utilize the given script, you must follow the [**instruction**](/pages/user_guides/InPython/tutorial_1/tutorial_1.md) first. Please, get familiar with the protocol we provide in this Tutorial.  
 
 ## Required Software
 - [Cytoscape](https://cytoscape.org/): Provide a great graphic support along with the large database of pathways (Signor, Wikipathway, etc.) 

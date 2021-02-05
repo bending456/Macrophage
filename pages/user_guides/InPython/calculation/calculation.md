@@ -34,7 +34,7 @@ def reader(filename,
       for line in rawdata:
         if line.strip():
           line = line.strip("\n' '")
-          line = line.split("	")
+          line = line.split()
 
           if counter == 0:
             counter = counter + 1 
@@ -118,202 +118,313 @@ def protReader(filename):
   return data, name
 ```
 
-## Assigning edge weight based on the name of edge 
-- In this specific example, we use "up-regulation" and "down-regulation" only. However, if the future process can elaborate each edge, we recommend to sophisticate this process. Please, feel free to contact us! 
+## Assigning edge weight based on the expression level reported in mRNA sequence data set
 
 ```python
-def weighingEdges(edge_names,down_score,up_score):
-    edge_weight_dict = {}
-    for name in edge_names:
-        if name == 'down-regulates':
-            w = [down_score,'D']
-            edge_weight_dict[name] = w
-        elif name == 'up-regulates':
-            w = [up_score,'U']
-            edge_weight_dict[name] = w
+def prepare_process(networkFilename, mRNAseqFilename, protFilename = None):
+    networkdata = reader(networkFilename, sif=True)
+    rnadata = reader(mRNAseqFilename)
 
-    return edge_weight_dict
+    if protFilename:
+        protdata, protname = protReader(protFilename) # this will be fixed but for now, nothing will happen 
+
+    num_of_edges = len(networkdata['start_nodes'])
+    unique_start = np.unique(networkdata['start_nodes'])
+    unique_end = np.unique(networkdata['end_nodes'])
+    unique_all = np.unique(networkdata['start_nodes'] + networkdata['end_nodes'])
+
+    M2_mRNA_Node = {}
+    M2_mRNA_Node_arr = []  
+    M1M2_mRNA_Node = {}
+    M1M2_mRNA_Node_arr = []
+    M1_mRNA_Node = {}
+    M1_mRNA_Node_arr = []
+
+    # FC from M2 to M1M2 (specific case for Jill's project )
+    logFC_mRNA_Node_M2toM12 = {}
+    logFC_mRNA_Node_arr_M2toM12 = []
+    # FC from M12 to M2 (specific case for Jill's project )
+    logFC_mRNA_Node_M12toM2 = {}
+    logFC_mRNA_Node_arr_M12toM2 = []
+    # FC from M2 to M1 (M1 polarization from M2, general case)
+    logFC_mRNA_Node_M2toM1 = {}
+    logFC_mRNA_Node_arr_M2toM1 = []
+    # FC from M1 to M2 (M2 polarization from M1, general case)
+    logFC_mRNA_Node_M1toM2 = {}
+    logFC_mRNA_Node_arr_M1toM2 = []
+
+    for node_name in unique_all:
+        i = 0
+        for seq in rnadata['mgi_symbol']:
+            if node_name.lower() == seq.lower():
+                dataM1 =   float(rnadata['M1'][i])
+                dataM2 =   float(rnadata['M2'][i])
+                dataM1M2 = float(rnadata['M1M2\n'][i])
+                
+                M2_mRNA_Node[node_name] = dataM2
+                M2_mRNA_Node_arr.append(dataM2)
+                M1_mRNA_Node[node_name] = dataM1
+                M1_mRNA_Node_arr.append(dataM1)
+                M1M2_mRNA_Node[node_name] = dataM1M2
+                M1M2_mRNA_Node_arr.append(dataM1M2)
+                
+                # Convert any possible zero to small number
+                ## division can screw this up 
+                if dataM2 < 1e-14:
+                    dataM2 = 1e-14
+
+                if dataM1 < 1e-14:
+                    dataM1 = 1e-14
+
+                if dataM1M2 < 1e-14:
+                    dataM1M2 = 1e-14
+
+                # FC from M2 to M1M2
+                logFCM12M2 = math.log2(dataM1M2/dataM2)
+                logFC_mRNA_Node_M2toM12[node_name] = logFCM12M2 
+                logFC_mRNA_Node_arr_M2toM12.append(logFCM12M2)
+                # FC from M12 to M2
+                logFC_mRNA_Node_M12toM2[node_name] = -logFCM12M2
+                logFC_mRNA_Node_arr_M12toM2.append(-logFCM12M2)
+                # FC from M2 to M1
+                logFCM1M2 = math.log2(dataM1/dataM2)
+                logFC_mRNA_Node_M2toM1[node_name] = logFCM1M2
+                logFC_mRNA_Node_arr_M2toM1.append(logFCM1M2)
+                # FC from M1 to M2
+                logFC_mRNA_Node_M1toM2[node_name] = -logFCM1M2
+                logFC_mRNA_Node_arr_M1toM2.append(-logFCM1M2)
+
+            i += 1 
+
+    ## Convert the mRNA based score on Node 
+    M2_node_score = {}
+    per10M2 = np.percentile(M2_mRNA_Node_arr,10)
+    per50M2 = np.percentile(M2_mRNA_Node_arr,50)
+    per95M2 = np.percentile(M2_mRNA_Node_arr,95)
+    for key, value in M2_mRNA_Node.items():
+        raw_value = float(value)
+        if raw_value <= per10M2 :
+            M2_node_score[key] = 1
+        elif raw_value <= per50M2 and raw_value > per10M2:
+            M2_node_score[key] = 2
+        elif raw_value <= per95M2 and raw_value > per50M2:
+            M2_node_score[key] = 3
+        elif raw_value > per95M2:
+            M2_node_score[key] = 4
+
+    ## Convert the mRNA based score on Node 
+    M1_node_score = {}
+    per10M1 = np.percentile(M1_mRNA_Node_arr,10)
+    per50M1 = np.percentile(M1_mRNA_Node_arr,50)
+    per95M1 = np.percentile(M1_mRNA_Node_arr,95)
+    for key, value in M1_mRNA_Node.items():
+        raw_value = float(value)
+        if raw_value <= per10M1 :
+            M1_node_score[key] = 1
+        elif raw_value <= per50M1 and raw_value > per10M1:
+            M1_node_score[key] = 2
+        elif raw_value <= per95M1 and raw_value > per50M1:
+            M1_node_score[key] = 3
+        elif raw_value > per95M1:
+            M1_node_score[key] = 4
+
+    ## Convert the mRNA based score on Node 
+    M1M2_node_score = {}
+    per10M1M2 = np.percentile(M1M2_mRNA_Node_arr,10)
+    per50M1M2 = np.percentile(M1M2_mRNA_Node_arr,50)
+    per95M1M2 = np.percentile(M1M2_mRNA_Node_arr,95)
+    for key, value in M1M2_mRNA_Node.items():
+        raw_value = float(value)
+        if raw_value <= per10M1M2 :
+            M1M2_node_score[key] = 1
+        elif raw_value <= per50M1M2 and raw_value > per10M1M2:
+            M1M2_node_score[key] = 2
+        elif raw_value <= per95M1M2 and raw_value > per50M1M2:
+            M1M2_node_score[key] = 3
+        elif raw_value > per95M1M2:
+            M1M2_node_score[key] = 4
+
+    # Convert the mRNA based score on Node 
+    # FC from M2 to M1M2
+    FC_node_score_M2toM12 = {}
+    for key, value in logFC_mRNA_Node_M2toM12.items():
+        raw_value = float(value)
+        if raw_value <= 0 :
+            FC_node_score_M2toM12[key] = -1 # This is Bad
+        else:
+            FC_node_score_M2toM12[key] = 1 # This is Good
+
+    # FC from M12 to M2
+    FC_node_score_M12toM2 = {}
+    for key, value in logFC_mRNA_Node_M12toM2.items():
+        raw_value = float(value)
+        if raw_value <= 0 :
+            FC_node_score_M12toM2[key] = -1 # This is Bad
+        else:
+            FC_node_score_M12toM2[key] = 1 # This is Good
+
+    # FC from M2 to M1
+    FC_node_score_M2toM1 = {}
+    for key, value in logFC_mRNA_Node_M2toM1.items():
+        raw_value = float(value)
+        if raw_value <= 0 :
+            FC_node_score_M2toM1[key] = -1 # This is Bad
+        else:
+            FC_node_score_M2toM1[key] = 1 # This is Good
+
+    # FC from M1 to M2
+    FC_node_score_M1toM2 = {}
+    for key, value in logFC_mRNA_Node_M1toM2.items():
+        raw_value = float(value)
+        if raw_value <= 0 :
+            FC_node_score_M1toM2[key] = -1 # This is Bad
+        else:
+            FC_node_score_M1toM2[key] = 1 # This is Good
+
+    # Scoring the edges #########################################
+    '''
+    This is where the magic happens
+    ''' 
+
+    edge_mRNA_score_M2toM12 = []
+    edge_mRNA_score_M12toM2 = []
+    edge_mRNA_score_M2toM1 = []
+    edge_mRNA_score_M1toM2 = []
+    
+    for n in np.arange(num_of_edges):
+        feature = networkdata['edge_features'][n]
+        startnode = networkdata['start_nodes'][n]
+        endnode = networkdata['end_nodes'][n]
+        
+        try: # by doing so, we are skipping some ligands that are not registered in mRNA seq **
+            startM2  = M2_node_score[startnode]
+            startM1  = M1_node_score[startnode]
+            startM12 = M1M2_node_score[startnode]
+
+        except: 
+            startM2 = 0
+            startM1 = 0 
+            startM12 = 0 
+
+        try: # by doing so, we are skipping some ligands that are not registered in mRNA seq **
+            endM2    = M2_node_score[endnode]
+            endM1    = M1_node_score[endnode]
+            endM12   = M1M2_node_score[endnode]
+
+        except: 
+            #pass
+            endM2 = 0
+            endM1 = 0 
+            endM12 = 0
+        
+        try: # by doing so, we are skipping some ligands that are not registered in mRNA seq **
+            startFC_M2toM12 = FC_node_score_M2toM12[startnode]
+            startFC_M12toM2 = FC_node_score_M12toM2[startnode]
+            startFC_M2toM1  = FC_node_score_M2toM1[startnode]
+            startFC_M1toM2  = FC_node_score_M1toM2[startnode]
+            
+        except: 
+            startFC_M2toM12 = 0
+            startFC_M12toM2 = 0
+            startFC_M1toM2 = 0
+            startFC_M2toM1 = 0 
+
+        try: # by doing so, we are skipping some ligands that are not registered in mRNA seq **
+            endFC_M2toM12   = FC_node_score_M2toM12[endnode]
+            endFC_M12toM2   = FC_node_score_M12toM2[endnode]
+            endFC_M2toM1    = FC_node_score_M2toM1[endnode]
+            endFC_M1toM2    = FC_node_score_M1toM2[endnode]
+            
+        except: 
+            endFC_M2toM12 = 0
+            endFC_M12toM2 = 0
+            endFC_M1toM2 = 0
+            endFC_M2toM1 = 0
+
+        if feature == 'up-regulates':
+            score_M2toM12 = math.exp(-((startM2 + endM2)/2+startFC_M2toM12+endFC_M2toM12))
+            score_M12toM2 = math.exp(-((startM12 + endM12)/2+startFC_M12toM2+endFC_M12toM2))
+            score_M2toM1  = math.exp(-((startM2 + endM2)/2+startFC_M2toM1+endFC_M2toM1))
+            score_M1toM2  = math.exp(-((startM1 + endM1)/2+startFC_M1toM2+endFC_M1toM2))
+        elif feature == 'down-regulates':
+            score_M2toM12 = math.exp(((startM2 + endM2)/2+startFC_M2toM12+endFC_M2toM12)) + 100 # I could add 1000 but let's see how it goes
+            score_M12toM2 = math.exp(((startM12 + endM12)/2+startFC_M12toM2+endFC_M12toM2)) + 100 # I could add 1000 but let's see how it goes
+            score_M2toM1  = math.exp(((startM2 + endM2)/2+startFC_M2toM1+endFC_M2toM1)) + 100 # I could add 1000 but let's see how it goes
+            score_M1toM2  = math.exp(((startM1 + endM1)/2+startFC_M1toM2+endFC_M1toM2)) + 100 # I could add 1000 but let's see how it goes
+
+        edge_mRNA_score_M2toM12.append(score_M2toM12)
+        edge_mRNA_score_M12toM2.append(score_M12toM2)
+        edge_mRNA_score_M2toM1.append(score_M2toM1)
+        edge_mRNA_score_M1toM2.append(score_M1toM2)
+
+    return unique_all, networkdata, edge_mRNA_score_M2toM12, edge_mRNA_score_M12toM2, edge_mRNA_score_M2toM1, edge_mRNA_score_M1toM2
 ```
 
-## Generating network figure via NetworkX 
+## Generating network figure via NetworkX and perform analysis based on the weight assigned by the preceeding script
 - The png file will be stored in your current working directory. 
 - In this particular example, the current working directory is assigned to be /content/pathwayanalysis
-- The file name is 'network_figure.png'
+- The file name is 'network_figure_XXXX.png'
 
 ```python
-def NetworkFigure(node_names,data_network,edge_weight_dict):
-  G2 = Digraph('unix', filename='fullpicture',format='png',
+def networkAnalaysis(unique_all, networkdata, edge_mRNA_score, figure_file_name, receptorlistFilename, destination,listofNodes_path):
+    ## Drawing part 
+    G2 = Digraph('unix', filename='fullpicture',format='png',
             node_attr={'shape':'box',
                        'color': 'blue:purple', 
                        'style': 'filled',
                        'fontcolor':'white'},
             edge_attr={'color': 'red'})
   
-  for node in node_names:
-    G2.node(node)
+    for node in unique_all:
+      G2.node(node)
 
-  for n in np.arange(len(data_network['start_nodes'])):
-    weight = edge_weight_dict[data_network['edge_features'][n]]
-    G2.edge(data_network['start_nodes'][n],data_network['end_nodes'][n],label=str(weight))
+    for n in np.arange(len(networkdata['start_nodes'])):
+      weight = edge_mRNA_score[n]
+      G2.edge(networkdata['start_nodes'][n],networkdata['end_nodes'][n],label=str(weight))
 
-  G2.view('network_figure')
+    G2.view(figure_file_name)
 
-  return
-```
-
-## Analysis prep function 1 
-- This function spits out:
-    1. List of receptors in pathway (list of target nodes as starting nodes)
-    2. List of nodes in the pathway led by each receptor 
-    3. List of score calculated from path length based on edge weight
-
-```python
-def analysis_prep(data_network,
-                  receptorlist,
-                  node_names,
-                  edge_weight_dict,
-                  destination):
-
-  counter = 0
-  Receptors = receptorlist
-
-  G = nx.DiGraph()
-  for node in node_names:
-    G.add_node(node)
-  
-  G.nodes()
-
-  for n in np.arange(len(data_network['start_nodes'])):
-    weight = edge_weight_dict[data_network['edge_features'][n]][0]
-    label_n = edge_weight_dict[data_network['edge_features'][n]][1]
-    G.add_edge(data_network['start_nodes'][n],data_network['end_nodes'][n],weight=weight,label=label_n)   
-  G.edges()
-
-  Outcome = destination 
-  pathDict = {}
-  pathScore = {}
-
-  for R in Receptors:
-    try:
-      Path = nx.dijkstra_path(G,R,Outcome)
-      pathDict[R] = Path
-      Score = nx.dijkstra_path_length(G,R,Outcome)
-      pathScore[R] = Score
-      #print('The shortest path from ',R,' (Upstream Receptor) to ',destination,' in a weighted Pathway Network: \n', Path,'\n with score of ',Score,'\n')
-    except:
-      pass
-
-  return Receptors, pathDict, pathScore
-```
-
-## Calculating overall score 
-- This will take expression from mRNA and protein expression and converts into overall score along with pathway length based score (addition)
-
-```python
-def exp_checker(Receptor_name,
-                data_mrna,
-                name_from_prot,
-                prot_data,
-                pathScore,
-                pathDict):
-
-  List_path_nodes = pathDict[Receptor_name]
-  #print('Checking the expression of each node from mRNA seq data for ', Receptor_name,'-mediated pathway')
-  #print(pathDict[Receptor_name])
-  M2Score = 0
-  PolarizeScore = 0
-  prot_exp_score = 0
-
-  for node in List_path_nodes:
-    for g_name in data_mrna['mgi_symbol']:
-      if node.lower() == g_name.lower():
-        n = data_mrna['mgi_symbol'].index(g_name)
-        expM2 = float(data_mrna['M2'][n])
-        expM1 = float(data_mrna['M1'][n])
-        expM1M2 = float(data_mrna['M1M2'][n])
-        compFC = math.log2(expM1M2/expM2)
-        #print('- Name of Node: ', node)
-
-        if float(expM2) < 0.001:
-          continue
-        else:
-          M2Score = M2Score + expM2
-          PolarizeScore = PolarizeScore + compFC
-          #print('-- Expression in M2: ', expM2)
-          #print('-- Fold Change from M2 to M1M2: ', compFC)
-
-    for p_name in name_from_prot:
-      if node.lower() == p_name.lower():
-        prot_exp = 1/prot_data[p_name]
-        if prot_exp_val < 1:
-          prot_exp_val = prot_exp*-1
+    ## Actual Network Analysis
+    G = nx.DiGraph()
+    for node in unique_all:
+      G.add_node(node)
     
-        prot_exp_score += prot_exp_val
-        #print(p_name)
-        #print('-- Fold Change from Protein Expression: ',prot_exp_val)
-      else:
-        prot_exp_val = 0
-      
-  
-  pathscore = pathScore[Receptor_name]
-  if pathscore > 1000:
-    pathscore = -1000
-  else:
-    pathscore = np.log10(1/pathscore)
+    G.nodes()
 
-  total = 0.1*M2Score + 10*PolarizeScore + pathscore + prot_exp_score*10
-  #print('- Pathway Score: ',total, 'pathway length: ',pathScore[Receptor_name])
-  #print('----END----')
+    for n in np.arange(len(networkdata['start_nodes'])):
+      weight = edge_mRNA_score[n]
+      G.add_edge(networkdata['start_nodes'][n],networkdata['end_nodes'][n],weight=weight)   
+    G.edges()
 
-  return total
-```
+    Receptor_info = textreader(receptorlistFilename)
+    Receptor_name = Receptor_info['Receptors']
+    Receptor_feature = Receptor_info['Pro/Anti']
+    Outcome = destination
 
-- The following is the way converting expression into score
-```python
-total = 0.1*M2Score + 10*PolarizeScore + pathscore + prot_exp_score*10
-```
-- *pathscore* is either quite small (< 100) or big (> 1000) number. Small number indicates more favorable path than big score pathway because 1000 score is added to the pathway score if path is inhibitory. Therefore, we convert the score to -1000 if the original score is bigger than 1000. 
-- *M2Score* indicates the expression of M1 specific gene in M2 under the assumption that its abundance will be addition for M1 polarization. 
-- *PolarizeScore* indicates the expression change of M1 specific gene due to M1 MEV treatment (M1M2). 
-- *prot_exp_score* indicates the expression upregulated from M2 to M1. Only selective proteins listed as nodes in selected-receptor mediated pathway. 
+    Scorelist = []
+    ReceptorList = []
+    ReceptorFeatureList = []
 
-## Generating the final outcome. 
-```python
-def score_per_receptor(destination,
-                       data_mrna,
-                       receptor_list,
-                       name_from_prot,
-                       prot_data,
-                       data_network,
-                       node_names,
-                       edge_weight_dict):
+    PathwayNodes = {}
 
-  Receptors, pathDict, pathScore = analysis_prep(data_network,
-                                                 receptor_list,
-                                                 node_names,
-                                                 edge_weight_dict,
-                                                 destination)
-  collected_score = []
-  tested_receptors = []
+    i = 0
+    for R in Receptor_name:
+      try:
+        Path = nx.dijkstra_path(G,R,Outcome)
+        Score = nx.dijkstra_path_length(G,R,Outcome)
+        Scorelist.append(Score)
+        ReceptorList.append(R)
+        ReceptorFeatureList.append(Receptor_feature[i])
+        PathwayNodes[R] = Path
+        if listofNodes_path:
+          print('The shortest path from ',R,' (Upstream Receptor) to ',Outcome,' in a weighted Pathway Network: \n', Path,'\n with score of ',Score,'\n')
+      except:
+        pass
+      i += 1
 
-  #print(Receptors)
-  for receptor_name in Receptors:
-    try:
-      score = exp_checker(receptor_name,
-                          data_mrna,
-                          name_from_prot,
-                          prot_data,
-                          pathScore,
-                          pathDict)
+    collected_data = {'Receptors': ReceptorList, 'Pro/Anti': ReceptorFeatureList, 'Score': Scorelist}
 
-      collected_score.append(score)
-      tested_receptors.append(receptor_name)
-    except:
-      pass
-
-  receptor_and_score = {'Receptors': tested_receptors, 'Score': collected_score}
-  #print(receptor_and_score)
-  return receptor_and_score, pathDict
+    return collected_data, PathwayNodes
 ```
 
 ## Checking mRNA sequence and protein expression data against specific node
@@ -372,10 +483,32 @@ def runItAll(
               Prot_inputfilename = 'Ab_Chris',
               network_inputfilename = 'network',
               receptor_list = 'receptorlist',
-              List_file_name = 'test2',
+              ligand_list_file_name = 'ligandlist',
               destination = 'M1_polarization',
-              unit_test_receptor = None
+              unit_test_receptor = False,
+              display=True,
+              listofNodes_path=True,
               ): 
+  ##
+  ## Misc
+  ## 
+  
+  unique_all, networkdata, edge_mRNA_score_M2toM12, edge_mRNA_score_M12toM2, edge_mRNA_score_M2toM1, edge_mRNA_score_M1toM2 = util.prepare_process(network_inputfilename,mRNA_inputfilename)
+  
+  if destination == 'M1_polarization':
+    collected_data1, PathwayNodes1 = util.networkAnalaysis(unique_all, networkdata, edge_mRNA_score_M2toM12, 'new_figure_target'+destination, receptor_list, destination,listofNodes_path)
+    collected_data2, PathwayNodes2 = util.networkAnalaysis(unique_all, networkdata, edge_mRNA_score_M2toM1, 'new_figure_control'+destination, receptor_list, destination,listofNodes_path)
+
+  elif destination == 'M2_polarization':
+    collected_data1, PathwayNodes1 = util.networkAnalaysis(unique_all, networkdata, edge_mRNA_score_M12toM2, 'new_figure_target'+destination, receptor_list, destination,listofNodes_path)
+    collected_data2, PathwayNodes2 = util.networkAnalaysis(unique_all, networkdata, edge_mRNA_score_M1toM2, 'new_figure_control'+destination, receptor_list, destination,listofNodes_path)
+
+  df_target  = pd.DataFrame(collected_data1)
+  df_control = pd.DataFrame(collected_data2)
+
+  network_inputfilename = re.sub('\.sif','',network_inputfilename)
+  mRNA_inputfilename = re.sub('\.csv','',mRNA_inputfilename)
+
   #####################################################
   ### Extracting Gene names from mRNA sequence data ###
   #####################################################
@@ -401,44 +534,19 @@ def runItAll(
   ###           and add the weight to each edge based on its unique feature  ###
   ##############################################################################
   node_names = np.unique(data_network['start_nodes']+data_network['end_nodes']) ## get unique node name
-  edge_unique_feature = np.unique(data_network['edge_features']) ## get unique edge feature
 
-  edge_weight_dict = util.weighingEdges(edge_unique_feature,1000,1)
-
-  ######################################################################
-  ###       Generating Network Image based on pathway file           ###
-  ###  This step is simply for the better visualization than default ###
-  ######################################################################
-  '''
-  File will be generated in /home/pathwayanalysis directory
-  under the name "network_figure.png"
-  '''
-  util.NetworkFigure(node_names,data_network,edge_weight_dict)
-
-  ###########################################
-  ###       Performing the analysis       ###
-  ###########################################
-  receptor_and_score, pathDict = util.score_per_receptor(destination,
-                                                         data_mrna,
-                                                         receptor_list,
-                                                         prot_name,
-                                                         data_prot,
-                                                         data_network,
-                                                         node_names,
-                                                         edge_weight_dict)
-
-  with open(List_file_name+'.yaml') as file:
+  with open(ligand_list_file_name+'.yaml') as file:
     ligand_list = yaml.load(file)
 
   receptor_specifics = {}
   ligand_specifics = {}
 
-  for R in receptor_list:
+  for R in receptor_list['Receptors']:
     receptor_specifics[R] = {}
     ligand_specifics[R] = {}
 
     try:
-      list_node = pathDict[R]
+      list_node = PathwayNodes1[R]
       for node in list_node:
         receptor_specifics[R][node] = {}
         prot_exp, M1, M2, M1M2, logFCofM1M2overM2 = util.expression_search(node,
@@ -446,7 +554,7 @@ def runItAll(
                                                                            data_prot,
                                                                            prot_name)
 
-        receptor_specifics[R][node]['mAb'] = prot_exp
+        receptor_specifics[R][node]['mAb(From M1 to M2: M2/M1)'] = prot_exp
         receptor_specifics[R][node]['M1_mRNA'] = M1
         receptor_specifics[R][node]['M2_mRNA'] = M2
         receptor_specifics[R][node]['M1M2_mRNA'] = M1M2
@@ -464,7 +572,7 @@ def runItAll(
                                                                            data_prot,
                                                                            prot_name)
 
-        ligand_specifics[R][ligand]['mAb'] = prot_exp
+        ligand_specifics[R][ligand]['mAb(From M1 to M2: M2/M1)'] = prot_exp
         ligand_specifics[R][ligand]['M1_mRNA'] = M1
         ligand_specifics[R][ligand]['M2_mRNA'] = M2
         ligand_specifics[R][ligand]['M1M2_mRNA'] = M1M2
@@ -473,26 +581,7 @@ def runItAll(
     except:
       pass
 
-  if unit_test_receptor:
-    Receptors, pathDict, pathScore = util.analysis_prep(data_network,
-                                                        receptor_list,
-                                                        node_names,
-                                                        edge_weight_dict,
-                                                        destination)
-
-    score = util.exp_checker(unit_test_receptor,
-                             data_mrna,
-                             prot_name,
-                             data_prot,
-                             pathScore,
-                             pathDict)
-  else:
-    score = 'This is not unit test'
-
-  import pandas as pd 
-  df = pd.DataFrame(receptor_and_score)
-
-  return df, receptor_specifics, ligand_specifics, receptor_list, score
+  return collected_data1, collected_data2, df_target, df_control, receptor_specifics, ligand_specifics
 
 #!/usr/bin/env python
 import sys

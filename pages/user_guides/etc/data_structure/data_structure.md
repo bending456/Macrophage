@@ -61,6 +61,7 @@ Description per Column:
 ![This is .txt file](receptorlist.png)
 - Input file name: receptorlist.txt
 - If one of nodes added as a new network to the library is receptor, please list the receptor name in Network (sif file) to here. 
+- pro/anti indicates whether it is pro/anti-inflammatory receptor
 
 ### 4. Protein Expression Data 
 
