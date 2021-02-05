@@ -6,6 +6,7 @@ parent: User Guides
 ---
 
 # Calculation Summary
+![This is summary figure](networkXanalysisFlowchart.png)
 ### NetworkX-based network analysis based on the weight of edges/path evaluated by mRNA sequence data (and possibly protein expression data set)
 Full script is available [**HERE**](/pages/user_guides/InPython/calculation/calculation.html) under Analysis section 
 
